@@ -28,22 +28,22 @@ def draw_player():
     # --- Proportions ---
     torso_height = 20.0
     head_radius = 5.0
-    leg_height = 15.0
+    leg_height = 2.0
     arm_height = 15.0
 
     # --- Legs ---
     glColor3f(0.1, 0.2, 0.8) # Blue
     for i in [-.8, .8]:
         glPushMatrix()
-        glTranslatef(i * 4, 0, 0)
-        glRotatef(-90, 1, 0, 0)
-        gluCylinder(gluNewQuadric(), 2.5, 2.5, leg_height, 10, 10)
+        glTranslatef(i * 4, 1, 0)
+        glRotatef(90 * math.sin(1 * math.pi), 1, 0, 0)
+        gluCylinder(gluNewQuadric(), 2.5, 2.5, 15, 10, 10)
         glPopMatrix()
 
     # --- Torso ---
     glColor3f(0.1, 0.8, 0.2) # Green
     glPushMatrix()
-    glTranslatef(0, leg_height+10, 0)
+    glTranslatef(0, 10, 0)
     glScalef(12.0, torso_height, 6.0)
     glutSolidCube(1)
     glPopMatrix()
@@ -51,7 +51,7 @@ def draw_player():
     # --- Head ---
     glColor3f(1.0, 0.8, 0.6) # Skin color
     glPushMatrix()
-    glTranslatef(0, leg_height + 5 + torso_height, 0)
+    glTranslatef(0, 5 + torso_height, 0)
     glutSolidSphere(head_radius, 20, 20)
     glPopMatrix()
 
@@ -59,8 +59,8 @@ def draw_player():
     glColor3f(1.0, 0.8, 0.6) # Skin color
     for i in [-1, 1]:
         glPushMatrix()
-        glTranslatef(i * 7, leg_height + 5 + torso_height - 5, 0)
-        glRotatef(90, 1, 0, 0)
+        glTranslatef(i * 7, 5 + torso_height - 5, 0)
+        glRotatef(45 * math.sin(1/7 * math.pi), 1, 0, 0)
         gluCylinder(gluNewQuadric(), 2.0, 2.0, arm_height, 10, 10)
         glPopMatrix()
 
