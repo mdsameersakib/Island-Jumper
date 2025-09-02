@@ -410,7 +410,16 @@ def update_game_state():
     for tile in tiles:
         if tile['type'] == 'moving':
             tile['pos'][0] += tile['move_speed'] * tile['move_dir'] * (1/60.0)
-            if abs(tile['pos'][0] - tile['origin_x']) > tile['move_range']:
+            
+            # Check if the tile has hit the edge of the river
+            tile_left_edge = tile['pos'][0] - tile['size'] / 2
+            tile_right_edge = tile['pos'][0] + tile['size'] / 2
+
+            if (tile_right_edge > RIVER_WIDTH and tile['move_dir'] > 0) or \
+               (tile_left_edge < -RIVER_WIDTH and tile['move_dir'] < 0):
+                tile['move_dir'] *= -1
+            # Original check for move range is now secondary
+            elif abs(tile['pos'][0] - tile['origin_x']) > tile['move_range']:
                  tile['move_dir'] *= -1
 
 
@@ -465,4 +474,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
