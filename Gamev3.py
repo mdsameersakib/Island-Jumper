@@ -151,6 +151,9 @@ def generate_new_tile():
     if len(tiles) > 7:
         tiles.pop(0)
 
+def draw_tree():
+    pass
+
 def generate_new_obstacle():
     """Generates a new obstacle in a fair, sequential path."""
     global obstacles, obstacle_spawn_count
