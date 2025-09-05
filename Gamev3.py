@@ -1,3 +1,139 @@
+bullets = []  # List to store active bullets
+
+bullet_speed = 70.0  # You can change this value to adjust bullet speed
+bullet_max_distance = 60 * 7  # Bullet disappears after 3 tile distance
+
+class Bullet:
+    def __init__(self, x, y, z, angle):
+        self.x = x
+        self.y = y
+        self.z = z
+        self.angle = angle  # in degrees
+        self.speed = bullet_speed  # Use local variable
+        self.radius = 1.0  # Half of previous value (was 2.0)
+        self.start_x = x
+        self.start_y = y
+        self.start_z = z
+    def update(self):
+        # Rotate trajectory by 90 degrees
+        rad = math.radians(self.angle + 90)
+        dx = self.speed * math.sin(rad) * (1/60.0)
+        dz = self.speed * math.cos(rad) * (1/60.0)
+        self.x += dx
+        self.z += dz
+    def has_expired(self):
+        dist = math.sqrt((self.x - self.start_x)**2 + (self.y - self.start_y)**2 + (self.z - self.start_z)**2)
+        return dist > bullet_max_distance
+    def draw(self):
+        glPushMatrix()
+        glTranslatef(self.x, self.y, self.z)
+        glColor3f(1.0, 0.2, 0.2)
+        glutSolidSphere(self.radius, 12, 12)
+        glPopMatrix()
+
+
+fire_bullet = False  # Global flag for shooting
+
+def draw_shooting_line():
+    global fire_bullet
+    if not shooting_mode or game_state != 'AIMING':
+        return
+    glPushMatrix()
+    glTranslatef(player_pos[0], player_pos[1], player_pos[2])
+    glRotatef(180, 0, 1, 0)
+    glRotatef(player_angle, 0, 1, 0)
+    torso_height, leg_height = 20.0, 15.0
+    hand_x = 7  # (or your desired value for X offset)
+    hand_y = leg_height + 5 + torso_height - 5
+    hand_z = 0
+    glTranslatef(hand_x, hand_y, hand_z)
+    glRotatef(-90, 0, 0, 1)
+    glRotatef(90, 1, 0, 0)
+    arm_height = 15.0
+    glTranslatef(0, 0, 0)  # No Z offset for gun tip
+    glColor3f(1.0, 0.0, 0.0)
+    glBegin(GL_LINES)
+    glVertex3f(0, 0, 0)
+    glVertex3f(0, 0, 240)
+    glEnd()
+    if fire_bullet:
+        angle_rad = math.radians(player_angle)
+        x, y, z = player_pos[0], player_pos[1], player_pos[2]
+        hand_world_x = hand_x * math.cos(angle_rad) - hand_z * math.sin(angle_rad)
+        hand_world_z = hand_x * math.sin(angle_rad) + hand_z * math.cos(angle_rad)
+        x += hand_world_x
+        y += hand_y
+        z += hand_world_z
+        # No Z offset for gun tip
+        bullets.append(Bullet(x, y, z, player_angle))
+        fire_bullet = False
+    glPopMatrix()
+
+
+shooting_mode = False
+
+def draw_player_aiming():
+    """Draws the player character in an aiming pose, holding a gun with one hand forward."""
+    glPushMatrix()
+    glTranslatef(player_pos[0], player_pos[1], player_pos[2])
+    glRotatef(180, 0, 1, 0) # Orient player to face negative Z
+    glRotatef(player_angle, 0, 1, 0)
+
+    torso_height, head_radius, leg_height, arm_height = 20.0, 5.0, 15.0, 15.0
+
+    # Legs (same as standing)
+    glColor3f(0.1, 0.2, 0.8)
+    for i in [-.8, .8]:
+        glPushMatrix()
+        glTranslatef(i * 4, leg_height, 0)
+        glRotatef(jump_anim_leg_angle, 1, 0, 0)
+        glTranslatef(0, -leg_height, 0)
+        glRotatef(-90, 1, 0, 0)
+        gluCylinder(gluNewQuadric(), 2.5, 2.5, leg_height, 10, 10)
+        glPopMatrix()
+
+    # Torso
+    glColor3f(0.1, 0.8, 0.2)
+    glPushMatrix()
+    glTranslatef(0, leg_height + 10, 0)
+    glScalef(12.0, torso_height, 6.0)
+    glutSolidCube(1)
+    glPopMatrix()
+
+    # Head
+    glColor3f(1.0, 0.8, 0.6)
+    glPushMatrix()
+    glTranslatef(0, leg_height + 5 + torso_height, 0)
+    gluSphere(gluNewQuadric(), head_radius, 20, 20)
+    glPopMatrix()
+
+    # Arms
+    # Left arm (forward, holding gun)
+    glColor3f(1.0, 0.8, 0.6)
+    glPushMatrix()
+    glTranslatef(-7, leg_height + 5 + torso_height - 5, 0)
+    glRotatef(-90, 0, 0, 1)  # Forward
+    glRotatef(90, 1, 0, 0)
+    gluCylinder(gluNewQuadric(), 2.0, 2.0, arm_height, 10, 10)
+    # Draw gun at end of arm
+    glPushMatrix()
+    glTranslatef(0, 0, arm_height)
+    glColor3f(0.2, 0.2, 0.2)
+    glScalef(1.2, 1.2, 4.0)
+    glutSolidCube(1)
+    glPopMatrix()
+    glPopMatrix()
+
+    # Right arm (down)
+    glColor3f(1.0, 0.8, 0.6)
+    glPushMatrix()
+    glTranslatef(7, leg_height + 5 + torso_height - 5, 0)
+    glRotatef(20, 0, 0, 1)
+    glRotatef(90, 1, 0, 0)
+    gluCylinder(gluNewQuadric(), 2.0, 2.0, arm_height, 10, 10)
+    glPopMatrix()
+
+    glPopMatrix()
 import sys
 import math
 import random
@@ -6,6 +142,8 @@ from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
 
+
+fire_bullet = False
 # --- Game Configuration & Constants ---
 PLAYER_JUMP_HEIGHT = 40.0
 PLAYER_JUMP_DURATION = 0.4
@@ -17,8 +155,8 @@ RIVER_WIDTH = 200.0
 TRAP_PULSE_SPEED = 8.0
 TRAP_FUSE_TIME = 3.0
 DROWN_DURATION = 2.0
-BOAT_FORWARD_SPEED = 200.0
-BOAT_STRAFE_SPEED = 150.0
+BOAT_FORWARD_SPEED = 20.0
+BOAT_STRAFE_SPEED = 300.0
 OBSTACLE_VERTICAL_SPACING = 350.0
 
 # --- Game State Variables ---
@@ -79,7 +217,7 @@ player_boat_pose = {
 
 def reset_game():
     """Resets all game variables to their initial state."""
-    global game_state, score, player_pos, player_angle, arrow_angle, tiles, obstacles
+    global game_state, score, player_pos, player_angle, arrow_angle, tiles, obstacles, autoplay_active
     global jump_anim_arm_angle, jump_anim_leg_angle, obstacle_spawn_count, tile_spawn_count
     game_state = 'AIMING'
     score = 0
@@ -91,6 +229,7 @@ def reset_game():
     tiles.clear()
     obstacles.clear()
     obstacle_spawn_count = 0
+    autoplay_active = False
     tile_spawn_count = 0
     tiles.append({
         'pos': [0, 0, 0], 'size': TILE_SIZE, 'type': 'safe',
@@ -128,31 +267,39 @@ def generate_new_tile():
     new_pos = [new_pos_x, 0, new_pos_z]
 
     tile_type = 'safe'
-    color = [0.5, 0.5, 0.5]
+    color = [0.7, 0.5, 0.2]
 
     trap_chance = max(0, (score - 15) * 0.025) 
     moving_chance = max(0, (score - 5) * 0.04)
+    coconut_chance = max(0, (score - 5) * 0.08)
     rand_choice = random.random()
+
+    # Check last 4 tiles for coconut type
+    recent_coconut = any(t['type'] == 'coconut' for t in tiles[-4:])
 
     if rand_choice < trap_chance and tiles[-1]['type'] != 'trap':
         tile_type = 'trap'
+        color = [0.0, 0.8, 1.0]
     elif rand_choice < trap_chance + moving_chance:
         tile_type = 'moving'
         color = [0.0, 0.8, 1.0]
+    elif rand_choice < trap_chance + moving_chance + coconut_chance and not recent_coconut:
+        tile_type = 'coconut'
+        color = [0.7, 0.5, 0.2]  # brownish color for coconut tile
 
-    new_tile = {'pos': new_pos, 'size': TILE_SIZE, 'type': tile_type, 'color': color, 'origin_x': new_pos_x}
+    new_tile = {'pos': new_pos, 'size': TILE_SIZE, 'type': tile_type, 'color': color, 'origin_x': new_pos_x, 'player_on_tile': False}
 
     if tile_type == 'moving':
-        new_tile.update({'move_dir': random.choice([-1, 1]), 'move_range': random.uniform(40, 80), 'move_speed': 25 + (score * 0.75)})
+        # Reduce move_speed to slow down moving tiles
+        new_tile.update({'move_dir': random.choice([-1, 1]), 'move_range': random.uniform(40, 80), 'move_speed': 10 + (score * 0.3)})
     if tile_type == 'trap':
         new_tile.update({'is_active': False, 'pulse_start_time': 0})
+    if tile_type == 'coconut':
+        new_tile['tree_shot'] = False
 
     tiles.append(new_tile)
     if len(tiles) > 7:
         tiles.pop(0)
-
-def draw_tree():
-    pass
 
 def generate_new_obstacle():
     """Generates a new obstacle in a fair, sequential path."""
@@ -332,6 +479,97 @@ def draw_boat():
     
     glPopMatrix()
 
+def draw_shot_coconut():
+    """Draws a single coconut (used for shot coconut)."""
+    glColor3f(0.35, 0.18, 0.07)
+    glutSolidSphere(0.30, 12, 12)
+
+
+def draw_tree(tile=None):
+    glPushMatrix()
+    scale = 20.0
+    glScalef(scale, scale, scale)
+    # If tree is shot, draw coconut lower than the others, unless player is on this tile
+    if tile and tile.get('tree_shot', False) and not tile.get('player_on_tile', False):
+        glPushMatrix()
+        glTranslatef(-1.2, 1, 2)  # Lower than the coconuts in the leaves
+        draw_shot_coconut()
+        glPopMatrix()
+    glPushMatrix()
+    glColor3f(0.55, 0.27, 0.07)
+    trunk = gluNewQuadric()
+    glRotatef(-90, 1, 0, 0)
+    gluCylinder(trunk, 0.2, 0.15, 3.5, 20, 20)
+    glPopMatrix()
+    glColor3f(0.0, 0.8, 0.0)
+    glPushMatrix()
+    glTranslatef(0.0, 3.5, 0.0)
+    leaf_length = 1.2
+    leaf_width = 0.6
+    leaf_angle = 45
+    for i in range(4):
+        angle_deg = i * 90.0
+        glPushMatrix()
+        glRotatef(angle_deg, 0, 1, 0)
+        glRotatef(leaf_angle, 1, 0, 0)
+        if i == 0:
+            # Only draw coconut if tree not shot and player not on tile
+            if not (tile and tile.get('tree_shot', False)) and not (tile and tile.get('player_on_tile', False)):
+                glPushMatrix()
+                glTranslatef(0, -0.02, 0.6)
+                draw_shot_coconut()
+                glPopMatrix()
+        else:
+            glPushMatrix()
+            glTranslatef(0, -0.02, 0.6)
+            glColor3f(0.35, 0.18, 0.07)
+            glutSolidSphere(0.30, 12, 12)
+            glPopMatrix()
+        glColor3f(0.0, 0.8, 0.0)
+        glBegin(GL_TRIANGLES)
+        glVertex3f(0, 0, 0)
+        glVertex3f(leaf_width, 0.7, leaf_length)
+        glVertex3f(-leaf_width, 0.7, leaf_length)
+        glEnd()
+        glPopMatrix()
+    glColor3f(0.0, 0.8, 0.0)
+    glPushMatrix()
+    glRotatef(leaf_angle, 1, 0, 0)
+    glBegin(GL_TRIANGLES)
+    glVertex3f(0, 0, 0)
+    glVertex3f(leaf_width, 0.7, leaf_length)
+    glVertex3f(-leaf_width, 0.7, leaf_length)
+    glEnd()
+    glPopMatrix()
+    glColor3f(0.0, 0.8, 0.0)
+    glPushMatrix()
+    glRotatef(-leaf_angle, 1, 0, 0)
+    glBegin(GL_TRIANGLES)
+    glVertex3f(0, 0, 0)
+    glVertex3f(leaf_width, 0.7, -leaf_length)
+    glVertex3f(-leaf_width, 0.7, -leaf_length)
+    glEnd()
+    glPopMatrix()
+    glColor3f(0.0, 0.8, 0.0)
+    glPushMatrix()
+    glRotatef(-leaf_angle, 0, 0, 1)
+    glBegin(GL_TRIANGLES)
+    glVertex3f(0, 0, 0)
+    glVertex3f(leaf_length, 0.7, leaf_width)
+    glVertex3f(leaf_length, 0.7, -leaf_width)
+    glEnd()
+    glPopMatrix()
+    glColor3f(0.0, 0.8, 0.0)
+    glPushMatrix()
+    glRotatef(leaf_angle, 0, 0, 1)
+    glBegin(GL_TRIANGLES)
+    glVertex3f(0, 0, 0)
+    glVertex3f(-leaf_length, 0.7, leaf_width)
+    glVertex3f(-leaf_length, 0.7, -leaf_width)
+    glEnd()
+    glPopMatrix()
+    glPopMatrix()
+    glPopMatrix()
 
 def draw_obstacles():
     """Draws all obstacles in boat mode."""
@@ -356,6 +594,16 @@ def draw_tiles_with_outlines():
         glutSolidCube(1)
         glPopMatrix()
 
+        # Draw tree if tile is coconut
+        if tile['type'] == 'coconut':
+            glPushMatrix()
+            # Move tree to the right side, but not to the edge
+            tree_offset = tile['size'] * 0.35  # 0.5 would be edge, 0.35 is safe
+            glTranslatef(tree_offset, TILE_HEIGHT/2, 0)
+            draw_tree(tile)
+            glPopMatrix()
+            # Removed draw_shot_coconut_fallen; coconut at center no longer drawn
+
         glColor3f(0.0, 0.0, 0.0)
         s, h = tile['size'] / 2.0, TILE_HEIGHT / 2.0
         glBegin(GL_LINES)
@@ -370,7 +618,8 @@ def draw_tiles_with_outlines():
 
 def draw_aiming_arrow():
     """Draws the arrow used to aim the jump."""
-    if game_state != 'AIMING' or autoplay_active: return
+    global shooting_mode
+    if game_state != 'AIMING' or autoplay_active or shooting_mode: return
     glPushMatrix()
     glTranslatef(player_pos[0], player_pos[1] + 1, player_pos[2])
     glRotatef(arrow_angle, 0, 1, 0)
@@ -402,23 +651,34 @@ def draw_axes():
 
 def keyboardListener(key, x, y):
     """Handles keyboard inputs."""
-    global arrow_angle, player_angle, player_pos, autoplay_active
-    if key == b'p': autoplay_active = not autoplay_active
+    global arrow_angle, player_angle, player_pos, autoplay_active, shooting_mode
+    if key == b'p':
+        autoplay_active = not autoplay_active
+        if autoplay_active:
+            global shooting_mode
+            shooting_mode = False
+    if key == b'x' and game_state == 'AIMING':
+        shooting_mode = not shooting_mode
     if not autoplay_active:
         if game_state == 'AIMING':
-            if key == b'a': arrow_angle += 4.0
-            if key == b'd': arrow_angle -= 4.0
+            if key == b'a': arrow_angle += 1.0
+            if key == b'd': arrow_angle -= 1.0
             player_angle = arrow_angle
         elif game_state == 'BOAT_MODE':
             if key == b'a': player_pos[0] -= BOAT_STRAFE_SPEED * (1/60.0)
             if key == b'd': player_pos[0] += BOAT_STRAFE_SPEED * (1/60.0)
             player_pos[0] = max(-RIVER_WIDTH + 25, min(RIVER_WIDTH - 25, player_pos[0]))
     if key == b'r' and game_state == 'GAME_OVER': reset_game()
+player_aiming_mode = False
 
 def mouseListener(button, state, x, y):
+    global fire_bullet
     """Handles mouse inputs for jumping."""
-    global game_state, jump_start_pos, jump_end_pos, jump_start_time, player_angle
+    global game_state, jump_start_pos, jump_end_pos, jump_start_time, player_angle, shooting_mode
     if button == GLUT_LEFT_BUTTON and state == GLUT_DOWN and game_state == 'AIMING' and not autoplay_active:
+        if shooting_mode:
+            fire_bullet = True
+            return
         current_tile_index = -1
         for i, tile in enumerate(tiles):
             if math.isclose(tile['pos'][0], player_pos[0], abs_tol=0.1) and \
@@ -447,91 +707,161 @@ def setupCamera():
     look_at_x, look_at_y, look_at_z = 0, player_pos[1], player_pos[2]
     gluLookAt(cam_x, cam_y, cam_z, look_at_x, look_at_y, look_at_z, 0, 1, 0)
 
+def update_bullet_coconut_collision():
+    for tile in tiles:
+        if tile['type'] == 'coconut' and not tile.get('tree_shot', False):
+            tree_offset = tile['size'] * 0.35
+            trunk_x = tile['pos'][0] + tree_offset
+            trunk_z = tile['pos'][2]
+            trunk_y_min = tile['pos'][1] + TILE_HEIGHT/2
+            trunk_y_max = trunk_y_min + 20  # approximate trunk height
+            for bullet in bullets[:]:
+                dist_xz = math.sqrt((bullet.x - trunk_x)**2 + (bullet.z - trunk_z)**2)
+                if dist_xz < 20 and trunk_y_min <= bullet.y <= trunk_y_max + 20:
+                    print("shot")
+                    bullets.remove(bullet)
+                    tile['tree_shot'] = True
+                    break
 
 def update_game_state():
     """Main logic update function."""
     global game_state, player_pos, score, jump_anim_arm_angle, jump_anim_leg_angle, drown_start_time
     global obstacles, arrow_angle, player_angle, jump_start_pos, jump_end_pos, jump_start_time
+    global bullets  # added for bullet updates
 
+    # --- Update bullets ---
+    for bullet in bullets:
+        bullet.update()
+    bullets = [b for b in bullets if not b.has_expired()]
+    update_bullet_coconut_collision()
+
+    # --- Autoplay / AIMING logic ---
     if autoplay_active:
         if game_state == 'AIMING' and len(tiles) > 1:
-            current_tile_index = next((i for i, t in enumerate(tiles) if math.isclose(t['pos'][0],player_pos[0]) and math.isclose(t['pos'][2],player_pos[2])), -1)
+            current_tile_index = next(
+                (i for i, t in enumerate(tiles) if math.isclose(t['pos'][0], player_pos[0]) 
+                 and math.isclose(t['pos'][2], player_pos[2])), -1)
             if current_tile_index != -1 and current_tile_index + 1 < len(tiles):
                 target_tile = tiles[current_tile_index + 1]
                 target_pos_x = target_tile['pos'][0]
                 if target_tile['type'] == 'moving':
                     sim_pos, sim_dir = target_tile['pos'][0], target_tile['move_dir']
-                    for _ in range(int(PLAYER_JUMP_DURATION*60)):
-                        sim_pos += target_tile['move_speed']*sim_dir*(1/60.0)
-                        if not (-RIVER_WIDTH < sim_pos-target_tile['size']/2 and sim_pos+target_tile['size']/2 < RIVER_WIDTH): sim_dir *= -1
+                    for _ in range(int(PLAYER_JUMP_DURATION * 60)):
+                        sim_pos += target_tile['move_speed'] * sim_dir * (1/60.0)
+                        if not (-RIVER_WIDTH < sim_pos - target_tile['size']/2 and sim_pos + target_tile['size']/2 < RIVER_WIDTH):
+                            sim_dir *= -1
                     target_pos_x = sim_pos
                 dx, dz = target_pos_x - player_pos[0], target_tile['pos'][2] - player_pos[2]
-                target_angle_rad = math.atan2(-dx,-dz)
+                target_angle_rad = math.atan2(-dx, -dz)
                 target_angle_deg = math.degrees(target_angle_rad)
-                angle_diff = (target_angle_deg - arrow_angle + 180)%360-180
+                angle_diff = (target_angle_deg - arrow_angle + 180) % 360 - 180
                 arrow_angle += angle_diff * 0.15
                 player_angle = arrow_angle
                 if abs(angle_diff) < 1.0:
-                    game_state = 'JUMPING'; jump_start_pos = list(player_pos)
+                    game_state = 'JUMPING'
+                    jump_start_pos = list(player_pos)
                     jump_end_pos = [target_tile['pos'][0], player_pos[1], target_tile['pos'][2]]
                     jump_start_time = time.time()
         elif game_state == 'BOAT_MODE':
-            closest_obs = min([obs for obs in obstacles if obs['pos'][2] < player_pos[2]], key=lambda o: player_pos[2]-o['pos'][2], default=None)
-            if closest_obs and player_pos[2]-closest_obs['pos'][2] < 600:
-                player_pos[0] += -BOAT_STRAFE_SPEED*(1/60.0) if player_pos[0] < closest_obs['pos'][0] else BOAT_STRAFE_SPEED*(1/60.0)
+            closest_obs = min(
+                [obs for obs in obstacles if obs['pos'][2] < player_pos[2]], 
+                key=lambda o: player_pos[2]-o['pos'][2], default=None)
+            if closest_obs and player_pos[2] - closest_obs['pos'][2] < 600:
+                player_pos[0] += -BOAT_STRAFE_SPEED * (1/60.0) if player_pos[0] < closest_obs['pos'][0] else BOAT_STRAFE_SPEED * (1/60.0)
                 player_pos[0] = max(-RIVER_WIDTH+25, min(RIVER_WIDTH-25, player_pos[0]))
 
+    # --- Trap tile updates ---
     if game_state not in ['BOAT_MODE', 'GAME_OVER']:
         for tile in tiles:
             if tile.get('is_active'):
-                elapsed = time.time()-tile['pulse_start_time']
-                if elapsed > TRAP_FUSE_TIME and game_state=='AIMING' and abs(player_pos[0]-tile['pos'][0])<tile['size']/2 and abs(player_pos[2]-tile['pos'][2])<tile['size']/2:
-                    game_state = 'GAME_OVER'; return
-                tile['color'] = [1.0, 0.5*(0.5+0.5*math.sin(elapsed*TRAP_PULSE_SPEED)), 0.5*(0.5+0.5*math.sin(elapsed*TRAP_PULSE_SPEED))]
-    
-    if game_state == 'JUMPING':
-        progress = min((time.time()-jump_start_time)/PLAYER_JUMP_DURATION, 1.0)
-        player_pos[0] = (1-progress)*jump_start_pos[0] + progress*jump_end_pos[0]
-        player_pos[2] = (1-progress)*jump_start_pos[2] + progress*jump_end_pos[2]
-        player_pos[1] = jump_start_pos[1] + (4*(progress-progress**2))*PLAYER_JUMP_HEIGHT
-        jump_anim_arm_angle = 90*math.sin(progress*math.pi)
-        jump_anim_leg_angle = -45*math.sin(progress*math.pi)
-        if progress >= 1.0: game_state = 'LANDED'; jump_anim_arm_angle, jump_anim_leg_angle = 0.0, 0.0
+                elapsed = time.time() - tile['pulse_start_time']
+                if elapsed > TRAP_FUSE_TIME and game_state == 'AIMING' and abs(player_pos[0]-tile['pos'][0]) < tile['size']/2 and abs(player_pos[2]-tile['pos'][2]) < tile['size']/2:
+                    game_state = 'GAME_OVER'
+                    return
+                tile['color'] = [
+                    1.0, 
+                    0.5 * (0.5 + 0.5 * math.sin(elapsed * TRAP_PULSE_SPEED)), 
+                    0.5 * (0.5 + 0.5 * math.sin(elapsed * TRAP_PULSE_SPEED))
+                ]
 
+    # --- Jumping logic ---
+    if game_state == 'JUMPING':
+        progress = min((time.time() - jump_start_time) / PLAYER_JUMP_DURATION, 1.0)
+        player_pos[0] = (1 - progress) * jump_start_pos[0] + progress * jump_end_pos[0]
+        player_pos[2] = (1 - progress) * jump_start_pos[2] + progress * jump_end_pos[2]
+        player_pos[1] = jump_start_pos[1] + (4 * (progress - progress**2)) * PLAYER_JUMP_HEIGHT
+        jump_anim_arm_angle = 90 * math.sin(progress * math.pi)
+        jump_anim_leg_angle = -45 * math.sin(progress * math.pi)
+        if progress >= 1.0:
+            game_state = 'LANDED'
+            jump_anim_arm_angle, jump_anim_leg_angle = 0.0, 0.0
+
+    # --- Landed logic ---
     elif game_state == 'LANDED':
         landed_safely = False
         for tile in tiles:
-            if abs(player_pos[0]-tile['pos'][0])<tile['size']/2 and abs(player_pos[2]-tile['pos'][2])<tile['size']/2:
+            # Set player_on_tile True only for the tile the player is on, False for others
+            if abs(player_pos[0]-tile['pos'][0]) < tile['size']/2 and abs(player_pos[2]-tile['pos'][2]) < tile['size']/2:
                 landed_safely = True
                 player_pos[0], player_pos[2], player_pos[1] = tile['pos'][0], tile['pos'][2], TILE_HEIGHT/2
-                if tile['type']=='boat_dock': game_state='BOAT_MODE'; player_pos[1]=0.0; tiles.clear(); return
-                if tile['type']=='moving': tile['type']='safe'; tile['color']=[0.5,0.5,0.5]
-                if tile['type']=='trap' and not tile.get('is_active'): tile['is_active']=True; tile['pulse_start_time']=time.time()
-                if not tile.get('is_active'): score += 1; generate_new_tile()
+                tile['player_on_tile'] = True
+                if tile['type'] == 'boat_dock':
+                    game_state = 'BOAT_MODE'
+                    player_pos[1] = 0.0
+                    tiles.clear()
+                    return
+                if tile['type'] == 'moving':
+                    tile['type'] = 'safe'
+                    tile['color'] = [0.5, 0.5, 0.5]
+                if tile['type'] == 'trap' and not tile.get('is_active'):
+                    tile['is_active'] = True
+                    tile['pulse_start_time'] = time.time()
+                if not tile.get('is_active'):
+                    # If landed on a shot coconut tile, score 5 instead of 1
+                    if tile['type'] == 'coconut' and tile.get('tree_shot', False):
+                        score += 5
+                    else:
+                        score += 1
+                    generate_new_tile()
                 game_state = 'AIMING'
                 break
+            else:
+                tile['player_on_tile'] = False
         if not landed_safely:
             game_state = 'DROWNING' if abs(player_pos[0]) < RIVER_WIDTH else 'GAME_OVER'
-            if game_state == 'DROWNING': drown_start_time = time.time()
-    
-    elif game_state == 'DROWNING':
-        if time.time()-drown_start_time > DROWN_DURATION: game_state = 'GAME_OVER'
-        else: player_pos[1] -= 20 * (1/60.0)
+            if game_state == 'DROWNING':
+                drown_start_time = time.time()
 
+    # --- Drowning logic ---
+    elif game_state == 'DROWNING':
+        if time.time() - drown_start_time > DROWN_DURATION:
+            game_state = 'GAME_OVER'
+        else:
+            player_pos[1] -= 20 * (1/60.0)
+
+    # --- Moving tile updates ---
     if game_state != 'BOAT_MODE':
         for tile in tiles:
             if tile['type'] == 'moving':
-                tile['pos'][0] += tile['move_speed']*tile['move_dir']*(1/60.0)
-                if not (-RIVER_WIDTH < tile['pos'][0]-tile['size']/2 and tile['pos'][0]+tile['size']/2 < RIVER_WIDTH): tile['move_dir']*=-1
+                tile['pos'][0] += tile['move_speed'] * tile['move_dir'] * (1/60.0)
+                if not (-RIVER_WIDTH < tile['pos'][0]-tile['size']/2 and tile['pos'][0]+tile['size']/2 < RIVER_WIDTH):
+                    tile['move_dir'] *= -1
 
+    # --- Boat mode logic ---
     if game_state == 'BOAT_MODE':
         player_pos[2] -= BOAT_FORWARD_SPEED * (1/60.0)
         player_angle = 0
-        if not obstacles or obstacles[-1]['pos'][2] > player_pos[2] - OBSTACLE_VERTICAL_SPACING: generate_new_obstacle()
+        if not obstacles or obstacles[-1]['pos'][2] > player_pos[2] - OBSTACLE_VERTICAL_SPACING:
+            generate_new_obstacle()
         for obs in obstacles:
-            if abs(player_pos[0]-obs['pos'][0])<25+obs['size']/2 and abs(player_pos[2]-obs['pos'][2])<50+obs['size']/2: game_state='GAME_OVER'; return
-            if not obs['passed'] and obs['pos'][2] > player_pos[2]: obs['passed']=True; score+=1
+            if abs(player_pos[0]-obs['pos'][0]) < 25 + obs['size']/2 and abs(player_pos[2]-obs['pos'][2]) < 50 + obs['size']/2:
+                game_state = 'GAME_OVER'
+                return
+            if not obs['passed'] and obs['pos'][2] > player_pos[2]:
+                obs['passed'] = True
+                score += 1
         obstacles[:] = [obs for obs in obstacles if obs['pos'][2] < player_pos[2] + 200]
+
 
 def idle():
     """Idle function that runs continuously."""
@@ -549,7 +879,19 @@ def showScreen():
     if game_state == 'BOAT_MODE':
         draw_boat(); draw_obstacles(); draw_player_sitting(player_pos)
     else:
-        draw_tiles_with_outlines(); draw_aiming_arrow(); draw_player_standing()
+        draw_tiles_with_outlines()
+        if shooting_mode:
+            draw_player_aiming()
+            draw_shooting_line()
+            # Draw bullets after player body and gun
+            for bullet in bullets:
+                bullet.draw()
+        else:
+            draw_aiming_arrow()
+            draw_player_standing()
+            # Draw bullets after player body
+            for bullet in bullets:
+                bullet.draw()
     draw_text(10, 770, f"Score: {score}")
     draw_text(10, 740, f"Cam Offset (x,y,z): {camera_offset}")
     draw_text(10, 710, f"Autoplay: {'ON' if autoplay_active else 'OFF'}")
@@ -577,4 +919,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
