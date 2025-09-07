@@ -211,20 +211,6 @@ def handle_shark_collision(shark):
         print("💀 GAME OVER: Sharks got you!")
 
 
-def handle_shark_collision(shark):
-    """Handles shark attacking the player in boat mode."""
-    global player_health, game_state
-
-    # Remove the shark once it hits
-    if shark in sharks:
-        sharks.remove(shark)
-
-    player_health -= 1
-    print(f"⚠️ Shark attack! Health left: {player_health}")
-
-    if player_health <= 0:
-        game_state = 'GAME_OVER'
-        print("💀 GAME OVER: Sharks got you!")
 
 def speed_up():
     """Call when player boosts to escape sharks."""
@@ -1223,7 +1209,7 @@ def showScreen():
     draw_text(10, 670, f"Autoplay: {'ON' if autoplay_active else 'OFF'}")
 
     # Frenzy Mode status
-    draw_text(10, 640, f"Frenzy Mode: {'ON' if frenzy_mode else 'OFF'}")
+    draw_text(10, 640, f"Frenzy Mode ( toggle with 'f' ): {'ON' if frenzy_mode else 'OFF'}")
 
     # Time remaining until collapse (only in Frenzy mode and if last_jump_time exists)
     if frenzy_mode and last_jump_time is not None:
@@ -1235,6 +1221,8 @@ def showScreen():
         draw_text(400, 400, "GAME OVER", GLUT_BITMAP_TIMES_ROMAN_24)
         draw_text(380, 360, f"Final Score: {score}")
         draw_text(390, 320, "Press 'R' to Restart")
+
+    draw_text(10, 600, f"Remaining lives/ shark collision: {player_health}")
 
     glutSwapBuffers()
 
