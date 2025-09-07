@@ -150,7 +150,7 @@ RIVER_WIDTH = 200.0
 TRAP_PULSE_SPEED = 8.0
 TRAP_FUSE_TIME = 3.0
 DROWN_DURATION = 2.0
-BOAT_FORWARD_SPEED = 300.0
+BOAT_FORWARD_SPEED = 30.0
 BOAT_STRAFE_SPEED = 1500
 OBSTACLE_VERTICAL_SPACING = 350.0
 
@@ -164,11 +164,12 @@ tile_count = 0  # Total tiles spawned
 current_game_mode = 0  # Current mode index
 game_modes = [
     {"name": "safe", "duration": 5, "description": "Safe tiles only"},
+    {"name": "coconut", "duration": 10, "description": "Coconut trees"},
     {"name": "moving", "duration": 8, "description": "Moving tiles introduced"},
     {"name": "mixed", "duration": 12, "description": "Mixed safe and moving tiles"},
     {"name": "frenzy", "duration": 10, "description": "Frenzy mode - yellow tiles"},
     {"name": "trap", "duration": 8, "description": "Trap tiles introduced"},
-    {"name": "coconut", "duration": 10, "description": "Coconut trees"},
+
     {"name": "chaos", "duration": 15, "description": "All tile types mixed"}
 ]
 mode_tiles_remaining = 0
@@ -328,7 +329,11 @@ def generate_new_tile():
     new_pos_z = last_tile_pos[2] - JUMP_DISTANCE
     
     # Set frenzy mode based on current mode
-    frenzy_mode = (current_mode["name"] == "frenzy")
+    if current_mode["name"] == "frenzy":
+        frenzy_mode = True
+    # else: leave frenzy_mode as-is, so manual toggle still works
+
+    # frenzy_mode = (current_mode["name"] == "frenzy")
     
     # Determine positioning based on mode
     if frenzy_mode:
@@ -835,6 +840,8 @@ def keyboardListener(key, x, y):
         if game_state == 'AIMING':
             player_angle = arrow_angle
         
+        
+        
         # Jump
         elif key == b' ' and game_state == 'AIMING':
             angle_rad = math.radians(arrow_angle)
@@ -847,6 +854,18 @@ def keyboardListener(key, x, y):
                 player_pos[2] - jump_distance * math.cos(angle_rad)
             ]
             jump_start_time = time.time()
+        
+        elif key == b'f':
+            global frenzy_mode, last_jump_time
+            frenzy_mode = not frenzy_mode
+            score = 0
+            if frenzy_mode:
+                print("Frenzy Mode: ON (timer starts after first jump)")
+            else:
+                last_jump_time = None
+                print("Frenzy Mode: OFF")
+            game_state = 'AIMING'
+            glutPostRedisplay()
     
     # Boat movement
     if game_state == 'BOAT_MODE' and not autoplay_active:
@@ -1207,8 +1226,7 @@ def main():
     glutDisplayFunc(showScreen)
     glutKeyboardFunc(keyboardListener)
     glutMouseFunc(mouseListener)
-    glutIdleFunc(idle)
-    
+    glutIdleFunc(idle)    
     glEnable(GL_DEPTH_TEST)
     reset_game()
     glutMainLoop()
