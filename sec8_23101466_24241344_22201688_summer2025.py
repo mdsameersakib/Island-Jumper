@@ -11,7 +11,7 @@ class Bullet:
         self.x = x
         self.y = y
         self.z = z
-        self.angle = angle # in degrees
+        self.angle = angle  # in degrees
         self.speed = bullet_speed
         self.radius = 1.0
         self.start_x = x
@@ -38,21 +38,20 @@ class Bullet:
 
 def draw_shooting_line():
     global fire_bullet
-    if not shooting_mode or game_state != 'AIMING':
+    if not shooting_mode or game_state == 'BOAT_MODE':
         return
     glPushMatrix()
     glTranslatef(player_pos[0], player_pos[1], player_pos[2])
     glRotatef(180, 0, 1, 0)
     glRotatef(player_angle, 0, 1, 0)
     torso_height, leg_height = 20.0, 15.0
-    hand_x = 7 # X offset for gun position
+    hand_x = 7
     hand_y = leg_height + 5 + torso_height - 5
     hand_z = 0
     glTranslatef(hand_x, hand_y, hand_z)
     glRotatef(-90, 0, 0, 1)
     glRotatef(90, 1, 0, 0)
     arm_height = 15.0
-    glTranslatef(0, 0, 0) # No Z offset for gun tip
     glColor3f(1.0, 0.0, 0.0)
     glBegin(GL_LINES)
     glVertex3f(0, 0, 0)
@@ -66,7 +65,6 @@ def draw_shooting_line():
         x += hand_world_x
         y += hand_y
         z += hand_world_z
-        # No Z offset for gun tip
         bullets.append(Bullet(x, y, z, player_angle))
         fire_bullet = False
     glPopMatrix()
@@ -75,10 +73,12 @@ def draw_player_aiming():
     """Draws the player character in an aiming pose, holding a gun with one hand forward."""
     glPushMatrix()
     glTranslatef(player_pos[0], player_pos[1], player_pos[2])
-    glRotatef(180, 0, 1, 0) # Orient player to face negative Z
+    glRotatef(180, 0, 1, 0) 
     glRotatef(player_angle, 0, 1, 0)
+
     torso_height, head_radius, leg_height, arm_height = 20.0, 5.0, 15.0, 15.0
-    # Legs (same as standing)
+
+    # Legs
     glColor3f(0.1, 0.2, 0.8)
     for i in [-.8, .8]:
         glPushMatrix()
@@ -88,6 +88,7 @@ def draw_player_aiming():
         glRotatef(-90, 1, 0, 0)
         gluCylinder(gluNewQuadric(), 2.5, 2.5, leg_height, 10, 10)
         glPopMatrix()
+
     # Torso
     glColor3f(0.1, 0.8, 0.2)
     glPushMatrix()
@@ -95,21 +96,23 @@ def draw_player_aiming():
     glScalef(12.0, torso_height, 6.0)
     glutSolidCube(1)
     glPopMatrix()
+
     # Head
     glColor3f(1.0, 0.8, 0.6)
     glPushMatrix()
     glTranslatef(0, leg_height + 5 + torso_height, 0)
     gluSphere(gluNewQuadric(), head_radius, 20, 20)
     glPopMatrix()
+
     # Arms
-    # Left arm (forward, holding gun)
+    # Left arm
     glColor3f(1.0, 0.8, 0.6)
     glPushMatrix()
     glTranslatef(-7, leg_height + 5 + torso_height - 5, 0)
-    glRotatef(-90, 0, 0, 1) # Forward
+    glRotatef(-90, 0, 0, 1)
     glRotatef(90, 1, 0, 0)
     gluCylinder(gluNewQuadric(), 2.0, 2.0, arm_height, 10, 10)
-    # Draw gun at end of arm
+    # Draw gun 
     glPushMatrix()
     glTranslatef(0, 0, arm_height)
     glColor3f(0.2, 0.2, 0.2)
@@ -117,7 +120,8 @@ def draw_player_aiming():
     glutSolidCube(1)
     glPopMatrix()
     glPopMatrix()
-    # Right arm (down)
+
+    # Right arm 
     glColor3f(1.0, 0.8, 0.6)
     glPushMatrix()
     glTranslatef(7, leg_height + 5 + torso_height - 5, 0)
@@ -125,6 +129,7 @@ def draw_player_aiming():
     glRotatef(90, 1, 0, 0)
     gluCylinder(gluNewQuadric(), 2.0, 2.0, arm_height, 10, 10)
     glPopMatrix()
+
     glPopMatrix()
 
 def draw_shot_coconut():
@@ -132,155 +137,16 @@ def draw_shot_coconut():
     glColor3f(0.35, 0.18, 0.07)
     glutSolidSphere(0.30, 12, 12)
 
+#Game Configuration & Constants
+PICKED_POWER_UP = False
+PURPLE_TILE_ACTIVE = False
+PURPLE_TILE_START_TIME = 0
+PURPLE_TILE_DURATION = 5.0  
+MAX_PURPLE_AFFECTED_TILES = 5  
+PURPLE_TILE_AFFECTED_TILES = 0
+PICKED_POWER_UP_ACTIVE_TILES = 0
+MAX_PICKED_POWER_UP_TILES = 5
 
-def generate_coconut():
-    """Spawns a floating coconut ahead of the player, slightly bobbing on the water."""
-    # Spawn a bit ahead of the player
-    z = player_pos[2] - 800  
-
-    # Spawn randomly within the river width but not too close to the edges
-    x = random.uniform(-RIVER_WIDTH + 20, RIVER_WIDTH - 20)  
-
-    # Place it on the water surface, with a tiny bobbing effect
-    y = -TILE_HEIGHT / 2 + 5 + random.uniform(-2, 2)  
-
-    # Add the coconut using a single 'pos' key for coordinates
-    coconuts.append({'pos': [x, y, z], 'collected': False})
-
-
-def draw_shark(shark):
-    """Draw a simple shark using a few triangles. `shark` is a dict with 'pos' key."""
-    glPushMatrix()
-    glTranslatef(shark['pos'][0], shark['pos'][1], shark['pos'][2])
-    glRotatef(180, 0, 1, 0)
-
-    # body (big triangle)
-    glColor3f(0.1, 0.1, 0.1)  # darkest grey
-    glBegin(GL_TRIANGLES)
-    glVertex3f(0.0, 0.0, 10.0)   # nose
-    glVertex3f(-6.0, 0.0, -10.0) # left back
-    glVertex3f(6.0, 0.0, -10.0)  # right back
-    glEnd()
-
-    # dorsal fin (small triangle on top)
-    glPushMatrix()
-    glTranslatef(0.0, 2.5, -2.0)
-    glColor3f(0.1, 0.1, 0.1)
-    glBegin(GL_TRIANGLES)
-    glVertex3f(0.0, 0.0, 4.0)
-    glVertex3f(-2.0, 0.0, -2.0)
-    glVertex3f(2.0, 0.0, -2.0)
-    glEnd()
-    glPopMatrix()
-
-    # tail (two small triangles)
-    glPushMatrix()
-    glTranslatef(0.0, 0.0, -10.0)
-    glColor3f(0.1, 0.1, 0.1)
-    glBegin(GL_TRIANGLES)
-    glVertex3f(0.0, 0.0, -4.0)
-    glVertex3f(-3.0, 0.0, 0.0)
-    glVertex3f(0.0, 0.0, 0.0)
-    glEnd()
-    glBegin(GL_TRIANGLES)
-    glVertex3f(0.0, 0.0, -4.0)
-    glVertex3f(3.0, 0.0, 0.0)
-    glVertex3f(0.0, 0.0, 0.0)
-    glEnd()
-    glPopMatrix()
-
-    glPopMatrix()
-
-def generate_shark():
-    z = player_pos[2] - random.randint(1500, 2000)  # farther away
-    x = random.uniform(-RIVER_WIDTH + 30, RIVER_WIDTH - 30)
-    y = -TILE_HEIGHT / 2  # keep sharks at water level
-    speed = random.uniform(0.5, 1)  # slower than before
-    sharks.append({'pos': [x, y, z], 'speed': speed})
-
-
-
-
-def spawn_shark():
-    """Spawns a shark behind the player that chases them."""
-    z = player_pos[2] - random.randint(1500, 2000)  # farther away
-    x = random.uniform(-RIVER_WIDTH + 30, RIVER_WIDTH - 30)
-    y = -TILE_HEIGHT / 2  # keep sharks at water level
-    speed = random.uniform(4, 7)  # slower than before
-    sharks.append({'pos': [x, y, z], 'speed': speed})
-
-
-def update_sharks():
-    """Moves sharks forward and checks for collisions with the player."""
-    global player_health, game_state
-
-    for shark in sharks:
-        # Move shark towards player along Z axis
-        shark['pos'][2] += shark['speed']
-
-        # Distance check (3D now, not just x/z)
-        dx = shark['pos'][0] - player_pos[0]
-        dy = shark['pos'][1] - player_pos[1]
-        dz = shark['pos'][2] - player_pos[2]
-        distance = (dx**2 + dy**2 + dz**2)**0.5
-
-        if distance < 40:  # hitbox radius (tweak as needed)
-            handle_shark_collision(shark)
-
-    # Remove sharks that went past player
-    sharks[:] = [s for s in sharks if s['pos'][2] < player_pos[2] + 200]
-
-
-def handle_shark_collision(shark):
-    """Handles shark attacking the player in boat mode."""
-    global player_health, game_state
-
-    # Remove the shark once it hits
-    if shark in sharks:
-        sharks.remove(shark)
-
-    player_health -= 1
-    print(f"⚠️ Shark attack! Health left: {player_health}")
-
-    if player_health <= 0:
-        game_state = 'GAME_OVER'
-        print("💀 GAME OVER: Sharks got you!")
-
-
-def update_coconuts():
-    """Remove collected/out-of-range ones."""
-    global coconuts
-    coconuts[:] = [c for c in coconuts if (not c.get('collected')) and (c['pos'][2] < player_pos[2] + 100)]
-
-def draw_coconuts():
-    """Draw all floating coconuts."""
-    glColor3f(0.35, 0.18, 0.07)  # brown
-    for c in coconuts:
-        if not c['collected']:
-            glPushMatrix()
-            glTranslatef(c['pos'][0], c['pos'][1], c['pos'][2])
-            glutSolidSphere(6, 16, 16)
-            glPopMatrix()
-
-def check_coconut_collision():
-    """Check per-frame if the player collides with any floating coconut."""
-    global coconuts, player_pos, score
-    # collision radius approximations
-    player_radius = 12.0
-    coconut_radius = 6.0
-    for c in coconuts:
-        if c.get('collected'):
-            continue
-        dx = player_pos[0] - c['pos'][0]
-        dy = player_pos[1] - c['pos'][1]
-        dz = player_pos[2] - c['pos'][2]
-        dist = math.sqrt(dx*dx + dy*dy + dz*dz)
-        if dist < (player_radius + coconut_radius):
-            c['collected'] = True
-            score += 5
-            print("Coconut collected! (+5)")
-
-# --- Game Configuration & Constants ---
 PLAYER_JUMP_HEIGHT = 40.0
 PLAYER_JUMP_DURATION = 0.4
 JUMP_DISTANCE = 150.0
@@ -288,44 +154,52 @@ ARROW_LENGTH = 75.0
 TILE_SIZE = 60.0
 TILE_HEIGHT = 10.0
 RIVER_WIDTH = 200.0
-TRAP_PULSE_SPEED = 3.0
+TRAP_PULSE_SPEED = 8.0
 TRAP_FUSE_TIME = 3.0
 DROWN_DURATION = 2.0
-BOAT_FORWARD_SPEED = 30.0
+BOAT_FORWARD_SPEED = 60.0
 BOAT_STRAFE_SPEED = 1500
 OBSTACLE_VERTICAL_SPACING = 350.0
-# Frenzy mode constants from feature 2+4
+
+# Frenzy mode constants
 frenzy_mode = False
 last_jump_time = None
-FRENZY_COLLAPSE_TIME = 5.5 # seconds before island collapses
-# Default player speed
-player_speed = 10
-bullets = [] # List to store active bullets
-# Global health for boat mode
-player_health = 3 # 3 hits before GAME OVER
-sharks = [] # List to store sharks
-bullet_speed = 70.0 # You can change this value to adjust bullet speed
-bullet_max_distance = 60 * 7 # Bullet disappears after 3 tile distance
-fire_bullet = False # Global flag for shooting
-shooting_mode = False
-coconuts = [] # Floating coconuts in boat mode
+FRENZY_COLLAPSE_TIME = 2.0 
+
 # Tile-based progression system
-tile_count = 0 # Total tiles spawned
-current_game_mode = 0 # Current mode index
+tile_count = 0  
+current_game_mode = 0  
 game_modes = [
-    {"name": "safe", "duration": 5, "description": "Safe tiles only"},
+    {"name": "purple_power", "duration": 1, "description": "Purple power-up tile appears"},
+    {"name": "safe", "duration": 12, "description": "Safe tiles only"},
     {"name": "coconut", "duration": 10, "description": "Coconut trees"},
+    {"name": "frenzy", "duration": 10, "description": "Frenzy mode - yellow tiles"},
     {"name": "moving", "duration": 8, "description": "Moving tiles introduced"},
     {"name": "mixed", "duration": 12, "description": "Mixed safe and moving tiles"},
-    {"name": "frenzy", "duration": 10, "description": "Frenzy mode - yellow tiles"},
     {"name": "trap", "duration": 8, "description": "Trap tiles introduced"},
     {"name": "chaos", "duration": 15, "description": "All tile types mixed"}
 ]
 mode_tiles_remaining = 0
+
 # Game progression variables
 boat_obstacles_passed = 0
 boat_exit_generated = False
 current_stage = "Island Jumping"
+
+# Shooting system variables
+bullets = []  
+bullet_speed = 70.0
+bullet_max_distance = 60 * 7  
+fire_bullet = False 
+shooting_mode = False
+
+# Boat coconut system
+boat_coconuts = [] 
+coconut_spacing = 800  
+boat_coconuts_spawned = 0  
+MAX_BOAT_COCONUTS = 10  
+boat_coconuts_collected = 0  
+
 # --- Game State Variables ---
 game_state = 'AIMING'
 score = 0
@@ -333,21 +207,26 @@ player_pos = [0.0, TILE_HEIGHT / 2, 0.0]
 player_angle = 0.0
 arrow_angle = 0.0
 autoplay_active = False
+
 # Jump animation variables
 jump_start_pos = None
 jump_end_pos = None
 jump_start_time = 0.0
 jump_anim_arm_angle = 0.0
 jump_anim_leg_angle = 0.0
+
 # Drown animation variable
 drown_start_time = 0.0
+
 # Lists to hold all game objects
 tiles = []
 obstacles = []
 obstacle_spawn_count = 0
 tile_spawn_count = 0
+
 # --- Camera Configuration ---
 camera_offset = [0, 150, 220]
+
 # --- Player Parts Data for Boat Pose ---
 player_boat_pose = {
     "overall_pos": [0.0, 7.0, 9.0],
@@ -397,7 +276,7 @@ def reset_game():
     global frenzy_mode, autoplay_active, shooting_mode, fire_bullet, bullets
     global tile_count, current_game_mode, mode_tiles_remaining
     global autoplay_active, frenzy_mode, boat_obstacles_passed, boat_exit_generated
-    global shooting_mode, bullets, fire_bullet, player_health, sharks, coconuts
+    global shooting_mode, bullets, fire_bullet, boat_coconuts
     
     last_jump_time = None
     game_state = 'AIMING'
@@ -413,17 +292,21 @@ def reset_game():
     autoplay_active = False
     shooting_mode = False
     fire_bullet = False
-    player_health = 3
     bullets.clear()
-    sharks.clear()
-    coconuts.clear()
+    boat_coconuts.clear()
+    boat_coconuts_spawned = 0
+    boat_coconuts_collected = 0
+    PICKED_POWER_UP = False
+    PURPLE_TILE_ACTIVE = False
+    PURPLE_TILE_AFFECTED_TILES = 0
+    PICKED_POWER_UP_ACTIVE_TILES = 0
     tiles.clear()
     obstacles.clear()
     obstacle_spawn_count = 0
     tile_spawn_count = 0
     tile_count = 0
     current_game_mode = 0
-    mode_tiles_remaining = game_modes[0]["duration"] # Start with first mode
+    mode_tiles_remaining = game_modes[0]["duration"] 
     
     # Add initial tile
     tiles.append({
@@ -448,11 +331,39 @@ def get_current_game_mode():
 
 def generate_new_tile():
     global tiles, score, tile_spawn_count, frenzy_mode, tile_count, mode_tiles_remaining
+    global PICKED_POWER_UP, PURPLE_TILE_ACTIVE, PURPLE_TILE_START_TIME, PURPLE_TILE_AFFECTED_TILES
+    global PICKED_POWER_UP_ACTIVE_TILES
+    
+    # Apply power-up effects
+    current_tile_size = TILE_SIZE
+    current_jump_duration = PLAYER_JUMP_DURATION
+    current_move_speed_multiplier = 1.0
+    
+    if PICKED_POWER_UP:
+        current_tile_size = 80
+        current_jump_duration = 0.09
+        PICKED_POWER_UP_ACTIVE_TILES += 1
+        if PICKED_POWER_UP_ACTIVE_TILES >= MAX_PICKED_POWER_UP_TILES:
+            PICKED_POWER_UP = False
+            PICKED_POWER_UP_ACTIVE_TILES = 0
+            print("Power-up expired after 5 tiles!")
+    
+    if PURPLE_TILE_ACTIVE:
+        current_tile_size = int(TILE_SIZE * 1.25) 
+        current_jump_duration = PLAYER_JUMP_DURATION * 0.7  
+        current_move_speed_multiplier = 0.20  
+        PURPLE_TILE_AFFECTED_TILES += 1 
+        
+        # Check if we've reached the limit
+        if PURPLE_TILE_AFFECTED_TILES >= MAX_PURPLE_AFFECTED_TILES:
+            PURPLE_TILE_ACTIVE = False
+            PURPLE_TILE_AFFECTED_TILES = 0
+            print("Purple tile effect expired after 5 tiles!")
     
     # Special transition to boat mode (keep old logic for boat transition)
     if score == 15:
         tiles.append({
-            'pos': [0, 0, tiles[-1]['pos'][2] - JUMP_DISTANCE], 'size': TILE_SIZE * 1.5,
+            'pos': [0, 0, tiles[-1]['pos'][2] - JUMP_DISTANCE], 'size': current_tile_size * 1.5,
             'type': 'boat_dock', 'color': [0.4, 0.2, 0.0], 'origin_x': 0, 'player_on_tile': False
         })
         return
@@ -467,14 +378,11 @@ def generate_new_tile():
     new_pos_z = last_tile_pos[2] - JUMP_DISTANCE
     
     # Set frenzy mode based on current mode
-    if current_mode["name"] == "frenzy":
-        frenzy_mode = True
-    # else: leave frenzy_mode as-is, so manual toggle still works
-    # frenzy_mode = (current_mode["name"] == "frenzy")
+    frenzy_mode = (current_mode["name"] == "frenzy")
     
     # Determine positioning based on mode
     if frenzy_mode:
-        new_pos_x = 0 # Straight line in frenzy mode
+        new_pos_x = 0 
     else:
         # Normal zig-zag pattern
         if tile_spawn_count % 2 == 0:
@@ -485,7 +393,7 @@ def generate_new_tile():
             new_pos_x = last_tile_pos[0] - JUMP_DISTANCE * math.sin(angle_rad)
     
     # Clamp within river boundaries
-    new_pos_x = max(-RIVER_WIDTH + TILE_SIZE/2, min(RIVER_WIDTH - TILE_SIZE/2, new_pos_x))
+    new_pos_x = max(-RIVER_WIDTH + current_tile_size/2, min(RIVER_WIDTH - current_tile_size/2, new_pos_x))
     new_pos = [new_pos_x, 0, new_pos_z]
     
     # Default properties
@@ -500,8 +408,16 @@ def generate_new_tile():
         tile_type = 'safe'
         color = [0.5, 0.5, 0.5]
     
+    elif mode_name == "purple_power":
+        # Spawn purple power-up tile
+        tile_type = 'power_up'
+        color = [0.6, 0.0, 0.8]  
+        PURPLE_TILE_ACTIVE = True
+        PURPLE_TILE_START_TIME = time.time()
+        PURPLE_TILE_AFFECTED_TILES = 0  
+    
     elif mode_name == "moving":
-        if random.random() < 0.7: # 70% moving tiles
+        if random.random() < 0.7: 
             tile_type = 'moving'
             color = [0.0, 0.8, 1.0]
         else:
@@ -519,7 +435,7 @@ def generate_new_tile():
     
     elif mode_name == "frenzy":
         tile_type = 'safe'
-        color = [0.8, 0.8, 0.0] # Yellow for frenzy
+        color = [0.8, 0.8, 0.0]  # Yellow 
     
     elif mode_name == "trap":
         rand_choice = random.random()
@@ -556,7 +472,7 @@ def generate_new_tile():
     
     # Build tile dictionary
     new_tile = {
-        'pos': new_pos, 'size': TILE_SIZE, 'type': tile_type,
+        'pos': new_pos, 'size': current_tile_size, 'type': tile_type,
         'color': color, 'origin_x': new_pos_x, 'player_on_tile': False
     }
     
@@ -565,7 +481,7 @@ def generate_new_tile():
         new_tile.update({
             'move_dir': random.choice([-1, 1]),
             'move_range': random.uniform(40, 80),
-            'move_speed': 10 + (score * 0.75)
+            'move_speed': (10 + (score * 0.75)) * current_move_speed_multiplier
         })
     elif tile_type == 'trap':
         new_tile.update({'is_active': False, 'pulse_start_time': 0})
@@ -580,7 +496,6 @@ def generate_boat_exit():
     """Generate exit dock for boat mode"""
     global tiles
     tiles.clear()
-    # Place exit dock closer and at player's current X position for easier access
     tiles.append({
         'pos': [player_pos[0], 0, player_pos[2] - 150], 'size': TILE_SIZE * 2.0,
         'type': 'exit_dock', 'color': [0.2, 0.6, 0.2], 'origin_x': player_pos[0],
@@ -596,10 +511,10 @@ def generate_new_obstacle():
     new_pos_z = last_pos[2] - OBSTACLE_VERTICAL_SPACING
     obstacle_spawn_count += 1
     
-    # 40% chance to spawn directly in front of player, 60% chance for normal spawn
+
     if random.random() < 0.4:
-        # Spawn in front of player's current position
-        new_pos_x = player_pos[0] + random.uniform(-30, 30) # Small offset for variety
+
+        new_pos_x = player_pos[0] + random.uniform(-30, 30) 
     else:
         # Normal spawn logic
         if obstacle_spawn_count % 2 == 0:
@@ -609,6 +524,18 @@ def generate_new_obstacle():
     
     new_pos_x = max(-RIVER_WIDTH + 50, min(RIVER_WIDTH - 50, new_pos_x))
     obstacles.append({'pos': [new_pos_x, 0, new_pos_z], 'size': random.uniform(40, 60), 'passed': False})
+
+def generate_boat_coconut():
+    """Generate a floating coconut for boat mode"""
+    global boat_coconuts, player_pos
+    coconut_x = random.uniform(-RIVER_WIDTH + 20, RIVER_WIDTH - 20)
+    coconut_z = player_pos[2] - random.uniform(200, 400)
+    coconut_y = random.uniform(40, 60) 
+    boat_coconuts.append({
+        'pos': [coconut_x, coconut_y, coconut_z],
+        'collected': False,
+        'radius': 5.0
+    })
 
 def draw_text(x, y, text, font=None):
     if font is None:
@@ -751,10 +678,10 @@ def draw_tree(tile=None):
     glPushMatrix()
     scale = 20.0
     glScalef(scale, scale, scale)
-    # If tree is shot, draw coconut lower than the others, unless player is on this tile
+
     if tile and tile.get('tree_shot', False) and not tile.get('player_on_tile', False):
         glPushMatrix()
-        glTranslatef(-1.2, 1, 2) # Lower than the coconuts in the leaves
+        glTranslatef(-1.2, 1, 2)  
         draw_shot_coconut()
         glPopMatrix()
     glPushMatrix()
@@ -775,7 +702,7 @@ def draw_tree(tile=None):
         glRotatef(angle_deg, 0, 1, 0)
         glRotatef(leaf_angle, 1, 0, 0)
         if i == 0:
-            # Only draw coconut if tree not shot and player not on tile
+
             if not (tile and tile.get('tree_shot', False)) and not (tile and tile.get('player_on_tile', False)):
                 glPushMatrix()
                 glTranslatef(0, -0.02, 0.6)
@@ -834,20 +761,49 @@ def draw_tree(tile=None):
     glPopMatrix()
 
 def update_bullet_coconut_collision():
+    global score
     for tile in tiles:
         if tile['type'] == 'coconut' and not tile.get('tree_shot', False):
             tree_offset = tile['size'] * 0.35
             trunk_x = tile['pos'][0] + tree_offset
             trunk_z = tile['pos'][2]
             trunk_y_min = tile['pos'][1] + TILE_HEIGHT/2
-            trunk_y_max = trunk_y_min + 20 # approximate trunk height
+            trunk_y_max = trunk_y_min + 20 
             for bullet in bullets[:]:
                 dist_xz = math.sqrt((bullet.x - trunk_x)**2 + (bullet.z - trunk_z)**2)
                 if dist_xz < 20 and trunk_y_min <= bullet.y <= trunk_y_max + 20:
                     print("Coconut tree shot!")
                     bullets.remove(bullet)
                     tile['tree_shot'] = True
+                    score += 5  
                     break
+
+def update_boat_coconut_collision():
+    """Check collision between bullets and boat coconuts"""
+    global score, boat_coconuts_collected
+    for coconut in boat_coconuts[:]:
+        if not coconut['collected']:
+            coconut_x, coconut_y, coconut_z = coconut['pos']
+            for bullet in bullets[:]:
+                dist = math.sqrt((bullet.x - coconut_x)**2 + (bullet.y - coconut_y)**2 + (bullet.z - coconut_z)**2)
+                if dist < coconut['radius'] + bullet.radius:
+                    print("Boat coconut shot! +5 points")
+                    bullets.remove(bullet)
+                    coconut['collected'] = True
+                    score += 5  
+                    boat_coconuts_collected += 1
+                    break
+
+def draw_boat_coconuts():
+    """Draw floating coconuts in boat mode"""
+    for coconut in boat_coconuts:
+        if not coconut['collected']:
+            glPushMatrix()
+
+            glTranslatef(coconut['pos'][0], 10, coconut['pos'][2])
+            glColor3f(0.35, 0.18, 0.07) 
+            glutSolidSphere(coconut['radius'], 12, 12)
+            glPopMatrix()
 
 def draw_obstacles():
     glColor3f(0.3, 0.3, 0.3)
@@ -876,6 +832,16 @@ def draw_tiles_with_outlines():
             tree_offset = tile['size'] * 0.35
             glTranslatef(tree_offset, TILE_HEIGHT/2, 0)
             draw_tree(tile)
+            glPopMatrix()
+        
+        # Draw special effect for power-up tiles
+        if tile['type'] == 'power_up':
+            glPushMatrix()
+            glTranslatef(0, TILE_HEIGHT/2 + 5, 0)
+            glColor3f(1.0, 1.0, 1.0)  
+            glutSolidSphere(3, 8, 8)
+            glColor3f(0.6, 0.0, 0.8)  
+            glutSolidSphere(2, 8, 8)
             glPopMatrix()
         
         # Draw outline
@@ -950,8 +916,9 @@ def draw_environment():
 def keyboardListener(key, x, y):
     global arrow_angle, player_angle, player_pos, autoplay_active, shooting_mode
     global game_state, jump_start_pos, jump_end_pos, jump_start_time
-    
     key = key.lower() if isinstance(key, bytes) else key
+    if key == b'x' and game_state != 'BOAT_MODE':
+        shooting_mode = not shooting_mode
     
     # Toggle autoplay
     if key == b'p':
@@ -959,11 +926,7 @@ def keyboardListener(key, x, y):
         if autoplay_active:
             shooting_mode = False
     
-    # Toggle shooting mode
-    if key == b'x' and game_state == 'AIMING':
-        shooting_mode = not shooting_mode
-    
-    # Movement controls (disabled in autoplay)
+    # Movement controls 
     if not autoplay_active:
         if key == b'a':
             arrow_angle += 4.0
@@ -973,7 +936,8 @@ def keyboardListener(key, x, y):
         if game_state == 'AIMING':
             player_angle = arrow_angle
         
-        if key == b' ' and game_state == 'AIMING':
+        # Jump
+        elif key == b' ' and game_state == 'AIMING':
             angle_rad = math.radians(arrow_angle)
             jump_distance = JUMP_DISTANCE
             game_state = 'JUMPING'
@@ -984,18 +948,6 @@ def keyboardListener(key, x, y):
                 player_pos[2] - jump_distance * math.cos(angle_rad)
             ]
             jump_start_time = time.time()
-        
-        if key == b'f':
-            global frenzy_mode, last_jump_time
-            frenzy_mode = not frenzy_mode
-            score = 0
-            if frenzy_mode:
-                print("Frenzy Mode: ON (timer starts after first jump)")
-            else:
-                last_jump_time = None
-                print("Frenzy Mode: OFF")
-            game_state = 'AIMING'
-            glutPostRedisplay()
     
     # Boat movement
     if game_state == 'BOAT_MODE' and not autoplay_active:
@@ -1020,7 +972,7 @@ def mouseListener(button, state, x, y):
             # Normal jump
             current_tile_index = -1
             for i, tile in enumerate(tiles):
-                if (math.isclose(tile['pos'][0], player_pos[0], abs_tol=0.1) and
+                if (math.isclose(tile['pos'][0], player_pos[0], abs_tol=0.1) and 
                     math.isclose(tile['pos'][2], player_pos[2], abs_tol=0.1)):
                     current_tile_index = i
                     break
@@ -1040,6 +992,9 @@ def mouseListener(button, state, x, y):
                 ]
                 player_angle = arrow_angle
                 jump_start_time = time.time()
+        
+        elif game_state == 'BOAT_MODE' and shooting_mode:
+            fire_bullet = True
 
 def setupCamera():
     glMatrixMode(GL_PROJECTION)
@@ -1060,17 +1015,27 @@ def update_game_state():
     global drown_start_time, obstacles, arrow_angle, player_angle
     global jump_start_pos, jump_end_pos, jump_start_time
     global boat_obstacles_passed, boat_exit_generated, last_jump_time, frenzy_mode
+    global boat_coconuts_spawned, boat_coconuts_collected
+    global PICKED_POWER_UP, PURPLE_TILE_ACTIVE, PURPLE_TILE_START_TIME, PURPLE_TILE_AFFECTED_TILES
+    global PICKED_POWER_UP_ACTIVE_TILES
+    
+
+    if PICKED_POWER_UP:
+        PLAYER_JUMP_DURATION = 0.09
+    else:
+        PLAYER_JUMP_DURATION = 0.4
     
     # Update bullets
     for bullet in bullets:
         bullet.update()
     bullets[:] = [b for b in bullets if not b.has_expired()]
     update_bullet_coconut_collision()
+    update_boat_coconut_collision()
     
     # Autoplay logic
     if autoplay_active and game_state == 'AIMING' and len(tiles) > 1:
-        current_tile_index = next((i for i, t in enumerate(tiles)
-                                 if math.isclose(t['pos'][0], player_pos[0]) and
+        current_tile_index = next((i for i, t in enumerate(tiles) 
+                                 if math.isclose(t['pos'][0], player_pos[0]) and 
                                     math.isclose(t['pos'][2], player_pos[2])), -1)
         if current_tile_index != -1 and current_tile_index + 1 < len(tiles):
             target_tile = tiles[current_tile_index + 1]
@@ -1096,17 +1061,17 @@ def update_game_state():
                     abs(player_pos[2] - tile['pos'][2]) < tile['size']/2):
                     game_state = 'GAME_OVER'
                     return
-                tile['color'] = [1.0,
+                tile['color'] = [1.0, 
                                0.5 * (0.5 + 0.5 * math.sin(elapsed * TRAP_PULSE_SPEED)),
                                0.5 * (0.5 + 0.5 * math.sin(elapsed * TRAP_PULSE_SPEED))]
     
-    # Frenzy mode collapse timer from feature 2+4 (game over on timeout)
     if frenzy_mode and game_state == 'AIMING' and last_jump_time is not None:
         elapsed_since_jump = time.time() - last_jump_time
         if elapsed_since_jump > FRENZY_COLLAPSE_TIME:
-            game_state = 'GAME_OVER'
+            # End frenzy mode
+            frenzy_mode = False
             last_jump_time = None
-            print("Island collapsed under you!")
+            return
     
     # Jumping animation
     if game_state == 'JUMPING':
@@ -1135,10 +1100,12 @@ def update_game_state():
                     game_state = 'BOAT_MODE'
                     player_pos[1] = 0.0
                     tiles.clear()
+                    boat_coconuts_spawned = 0 
+                    boat_coconuts_collected = 0 
                     return
                 elif tile['type'] == 'exit_dock':
                     game_state = 'AIMING'
-                    score = 35 # Continue to interlude
+                    score = 35  
                     generate_new_tile()
                     generate_new_tile()
                     generate_new_tile()
@@ -1149,20 +1116,24 @@ def update_game_state():
                 elif tile['type'] == 'trap' and not tile.get('is_active'):
                     tile['is_active'] = True
                     tile['pulse_start_time'] = time.time()
+                elif tile['type'] == 'power_up':
+                    # Purple power-up tile collected
+                    PICKED_POWER_UP = True
+                    PICKED_POWER_UP_ACTIVE_TILES = 0 
+                    print("Power-up collected! Jump duration: 0.09, Tile size: 80")
                 
                 # Award points and generate new tile
                 if not tile.get('is_active'):
                     if tile['type'] == 'coconut' and tile.get('tree_shot', False):
-                        # Bonus for shooting coconut tree
-                        score += 1 # Extra point for shooting
+                        score += 1  
                     
                     if frenzy_mode:
-                        # Check if this is a yellow frenzy tile
+
                         if tile['color'] == [0.8, 0.8, 0.0]:
-                            # Start collapse timer only when landing on yellow tiles
+
                             last_jump_time = time.time()
-                        score += 5 # 5 points per jump in frenzy mode
-                        # In frenzy mode, straighten the arrow immediately
+                        score += 5  
+
                         arrow_angle = 0
                         player_angle = 0
                     else:
@@ -1192,7 +1163,7 @@ def update_game_state():
         for tile in tiles:
             if tile['type'] == 'moving':
                 tile['pos'][0] += tile['move_speed'] * tile['move_dir'] * (1/60.0)
-                if not (-RIVER_WIDTH < tile['pos'][0] - tile['size']/2 and
+                if not (-RIVER_WIDTH < tile['pos'][0] - tile['size']/2 and 
                        tile['pos'][0] + tile['size']/2 < RIVER_WIDTH):
                     tile['move_dir'] *= -1
     
@@ -1200,15 +1171,21 @@ def update_game_state():
     if game_state == 'BOAT_MODE':
         player_pos[2] -= BOAT_FORWARD_SPEED * (1/60.0)
         player_angle = 0
+
+        if boat_coconuts_spawned < MAX_BOAT_COCONUTS and boat_obstacles_passed % 2 == 0 and boat_obstacles_passed > 0:
+
+            expected_coconuts = boat_obstacles_passed // 2
+            if boat_coconuts_spawned < expected_coconuts:
+                generate_boat_coconut()
+                boat_coconuts_spawned += 1
+                print(f"Coconut spawned! Total spawned: {boat_coconuts_spawned} at obstacle milestone: {boat_obstacles_passed}")
         
         # Autoplay collision avoidance for boat mode
         if autoplay_active:
-            # Look ahead for obstacles and steer away
             closest_obstacle = None
             min_distance = float('inf')
             
             for obs in obstacles:
-                # Only consider obstacles ahead of the player
                 if obs['pos'][2] < player_pos[2] and obs['pos'][2] > player_pos[2] - 200:
                     distance = abs(player_pos[2] - obs['pos'][2])
                     if distance < min_distance:
@@ -1216,21 +1193,19 @@ def update_game_state():
                         closest_obstacle = obs
             
             if closest_obstacle:
-                # Calculate if we need to move left or right to avoid
                 obs_x = closest_obstacle['pos'][0]
                 obs_size = closest_obstacle['size']
                 
-                # If obstacle is too close to our path, move away
-                if abs(player_pos[0] - obs_x) < obs_size/2 + 40: # Safety margin
-                    # Move away from obstacle
+                if abs(player_pos[0] - obs_x) < obs_size/2 + 40: 
+                  
                     if player_pos[0] < obs_x:
-                        # Move left
+             
                         player_pos[0] -= BOAT_STRAFE_SPEED * (1/60.0)
                     else:
-                        # Move right
+                    
                         player_pos[0] += BOAT_STRAFE_SPEED * (1/60.0)
                     
-                    # Keep within river bounds
+                 
                     player_pos[0] = max(-RIVER_WIDTH + 25, min(RIVER_WIDTH - 25, player_pos[0]))
         
         # Generate obstacles
@@ -1243,24 +1218,23 @@ def update_game_state():
                 abs(player_pos[2] - obs['pos'][2]) < 50 + obs['size']/2):
                 game_state = 'GAME_OVER'
                 return
-            # Mark obstacle as passed when player moves past it (player Z < obstacle Z)
             if not obs['passed'] and player_pos[2] < obs['pos'][2]:
                 obs['passed'] = True
                 boat_obstacles_passed += 1
-                print(f"Obstacle passed! Total: {boat_obstacles_passed}") # Debug print
+                print(f"Obstacle passed! Total: {boat_obstacles_passed}")
         
-        # Shark and coconut generation in boat mode
-        if random.random() < 0.001:
-            spawn_shark()
-            generate_shark()
-        
-        
-        update_sharks()
-        
-        if random.random() < 0.001:
-            generate_coconut()
-        update_coconuts()
-        check_coconut_collision()
+        # Check coconut collisions and scoring
+        for coconut in boat_coconuts[:]:
+            if not coconut['collected']:
+                coconut_x, coconut_y, coconut_z = coconut['pos']
+
+                if (abs(player_pos[0] - coconut_x) < 25 + coconut['radius'] and
+                    abs(player_pos[2] - coconut_z) < 50 + coconut['radius']):
+                    print("Boat collided with coconut! +5 points")
+                    coconut['collected'] = True
+                    score += 5 
+                    boat_coconuts_collected += 1
+                    boat_coconuts.remove(coconut)  
         
         # Check if boat mode is complete
         if boat_obstacles_passed >= 20 and not boat_exit_generated:
@@ -1270,24 +1244,24 @@ def update_game_state():
         
         # Check collision with exit dock
         if boat_exit_generated and tiles:
-            exit_dock = tiles[0] # Should be the exit dock
+            exit_dock = tiles[0]  
             if (abs(player_pos[0] - exit_dock['pos'][0]) < exit_dock['size']/2 and
                 abs(player_pos[2] - exit_dock['pos'][2]) < exit_dock['size']/2):
-                # Player reached the exit dock
+    
                 game_state = 'AIMING'
                 player_pos[0] = exit_dock['pos'][0]
                 player_pos[1] = TILE_HEIGHT / 2
                 player_pos[2] = exit_dock['pos'][2]
-                score = 35 # Continue to interlude
+                score = 35  
                 boat_exit_generated = False
                 generate_new_tile()
                 generate_new_tile()
                 generate_new_tile()
                 print("Boat mode completed! Continuing to next stage...")
                 return
-        
-        # Clean up old obstacles
+
         obstacles[:] = [obs for obs in obstacles if obs['pos'][2] < player_pos[2] + 200]
+        boat_coconuts[:] = [coco for coco in boat_coconuts if coco['pos'][2] < player_pos[2] + 200]
 
 def idle():
     update_game_state()
@@ -1305,66 +1279,72 @@ def showScreen():
     if game_state == 'BOAT_MODE':
         draw_boat()
         draw_obstacles()
-        draw_player_sitting(player_pos)
-        draw_coconuts()
-        for shark in sharks:
-            draw_shark(shark)
+        draw_boat_coconuts()  
+        if shooting_mode:
+            draw_player_aiming()
+            draw_shooting_line()
+     
+            for bullet in bullets:
+                bullet.draw()
+        else:
+            draw_player_sitting(player_pos)
+         
+            for bullet in bullets:
+                bullet.draw()
     else:
         draw_tiles_with_outlines()
         if shooting_mode:
             draw_player_aiming()
             draw_shooting_line()
-            # Draw bullets after player body and gun
+          
             for bullet in bullets:
                 bullet.draw()
         else:
             draw_aiming_arrow()
             draw_player_standing()
-            # Draw bullets after player body
+         
             for bullet in bullets:
                 bullet.draw()
     
     # UI Text
-    draw_text(10, 750, f"Score: {score}")
-    draw_text(10, 720, f"Stage: {get_current_stage()}")
+    draw_text(10, 730, f"Score: {score}")
+    draw_text(10, 710, f"Stage: {get_current_stage()}")
     
-    # Show current game mode
-    if score != 15: # Don't show during boat transition
+  
+    if score != 15: 
         current_mode = get_current_game_mode()
         draw_text(10, 690, f"Mode: {current_mode['name'].title()} ({mode_tiles_remaining} tiles left)")
         draw_text(10, 660, f"Total Tiles: {tile_count}")
     
     draw_text(10, 630, f"Autoplay: {'ON' if autoplay_active else 'OFF'}")
     
+    # Show power-up status
+    if PICKED_POWER_UP:
+        remaining_tiles = MAX_PICKED_POWER_UP_TILES - PICKED_POWER_UP_ACTIVE_TILES
+        draw_text(10, 600, f"POWER-UP ACTIVE: Fast Jump + Large Tiles ({remaining_tiles} tiles left)")
+    elif PURPLE_TILE_ACTIVE:
+        remaining_tiles = MAX_PURPLE_AFFECTED_TILES - PURPLE_TILE_AFFECTED_TILES
+        draw_text(10, 600, f"Purple Effect: {remaining_tiles} tiles left (Large tiles + Slow moving)")
+    
     # Show shooting mode status
     if shooting_mode:
-        draw_text(10, 600, "Shooting Mode: ON (Press X to toggle)")
+        draw_text(10, 570, "Shooting Mode: ON (Press X to toggle)")
     else:
-        draw_text(10, 600, "Shooting Mode: OFF (Press X on coconut tile to shoot)")
+        draw_text(10, 570, "Shooting Mode: OFF (Press X to shoot)")
     
     # Show boat progress when in boat mode
     if game_state == 'BOAT_MODE':
-        draw_text(10, 570, f"Obstacles Avoided: {boat_obstacles_passed}/20")
-        draw_text(10, 540, f"Remaining lives/ shark collision: {player_health}")
+        draw_text(10, 540, f"Obstacles Avoided: {boat_obstacles_passed}/20")
+        draw_text(10, 510, f"Coconuts Collected: {boat_coconuts_collected}/{boat_coconuts_spawned} (Max: {MAX_BOAT_COCONUTS})")
     
     if frenzy_mode and last_jump_time is not None:
         remaining = max(0, FRENZY_COLLAPSE_TIME - (time.time() - last_jump_time))
-        draw_text(10, 510, f"Collapse in: {remaining:.2f}s")
+        draw_text(10, 480, f"Collapse in: {remaining:.2f}s")
     
     if game_state == 'GAME_OVER':
         draw_text(400, 400, "GAME OVER")
         draw_text(380, 360, f"Final Score: {score}")
         draw_text(390, 320, "Press 'R' to Restart")
-
-    draw_text(10, 560, f"Frenzy Mode ( toggle with ' f ' ): {'ON' if frenzy_mode else 'OFF'}")
-
-    # Time remaining until collapse (only in Frenzy mode and if last_jump_time exists)
-    if frenzy_mode and last_jump_time is not None:
-        remaining = max(0, FRENZY_COLLAPSE_TIME - (time.time() - last_jump_time))
-        draw_text(10, 600, f"Collapse in: {remaining:.2f}s")
-
-    draw_text(10, 540, f"Score: {score}")
-
     
     glutSwapBuffers()
 
@@ -1379,6 +1359,7 @@ def main():
     glutKeyboardFunc(keyboardListener)
     glutMouseFunc(mouseListener)
     glutIdleFunc(idle)
+    
     glEnable(GL_DEPTH_TEST)
     reset_game()
     glutMainLoop()
